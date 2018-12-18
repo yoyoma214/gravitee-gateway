@@ -18,14 +18,11 @@ package io.gravitee.gateway.standalone;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.gravitee.definition.model.Endpoint;
 import io.gravitee.gateway.handlers.api.definition.Api;
-import io.gravitee.gateway.standalone.junit.annotation.ApiConfiguration;
 import io.gravitee.gateway.standalone.junit.annotation.ApiDescriptor;
 import io.gravitee.gateway.standalone.junit.rules.ApiDeployer;
-import io.gravitee.gateway.standalone.junit.rules.ApiPublisher;
 import io.gravitee.gateway.standalone.policy.PolicyBuilder;
 import io.gravitee.gateway.standalone.policy.ValidateRequestPolicy;
 import io.gravitee.gateway.standalone.policy.ValidateResponsePolicy;
-import io.gravitee.gateway.standalone.servlet.EchoServlet;
 import io.gravitee.plugin.core.api.ConfigurablePluginManager;
 import io.gravitee.plugin.policy.PolicyPlugin;
 import org.apache.http.HttpResponse;
@@ -49,16 +46,12 @@ import static org.junit.Assert.assertEquals;
 @ApiDescriptor(
         value = "/io/gravitee/gateway/standalone/handle-stream-content-error.json",
         enhanceHttpPort = false)
-@ApiConfiguration(
-        servlet = EchoServlet.class,
-        contextPath = "/echo")
 public class RequestResponseInvalidContentTest extends AbstractGatewayTest {
 
-    public WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
+    private WireMockRule wireMockRule = new WireMockRule(wireMockConfig().dynamicPort());
 
     @Rule
     public final TestRule chain = RuleChain
-            .outerRule(new ApiPublisher())
             .outerRule(wireMockRule)
             .around(new ApiDeployer(this));
 

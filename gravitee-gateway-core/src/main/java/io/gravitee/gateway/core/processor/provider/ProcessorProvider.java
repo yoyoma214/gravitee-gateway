@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.core.processor;
+package io.gravitee.gateway.core.processor.provider;
 
-import io.gravitee.gateway.api.ExecutionContext;
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
+import io.gravitee.gateway.core.processor.Processor;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
@@ -25,5 +23,5 @@ import io.gravitee.gateway.api.Response;
  */
 public interface ProcessorProvider<T, P extends Processor<T>> {
 
-    P provide(Request request, Response response, ExecutionContext executionContext);
+    P provide(T result);
 }

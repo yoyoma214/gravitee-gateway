@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.handlers.api.metrics;
+package io.gravitee.gateway.handlers.api.processor.pathmapping;
 
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
-import io.gravitee.gateway.api.handler.Handler;
+import io.gravitee.gateway.api.ExecutionContext;
+import io.gravitee.gateway.core.processor.AbstractProcessor;
 
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -26,21 +25,17 @@ import java.util.regex.Pattern;
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class PathMappingMetricsHandler implements Handler<Response> {
+public class PathMappingProcessor extends AbstractProcessor<ExecutionContext> {
 
-    private final Handler<Response> next;
     private final Map<String, Pattern> mapping;
-    private final Request request;
 
-    public PathMappingMetricsHandler(final Handler<Response> next, final Map<String, Pattern> mapping, Request request) {
-        this.next = next;
+    public PathMappingProcessor(final Map<String, Pattern> mapping) {
         this.mapping = mapping;
-        this.request = request;
     }
 
     @Override
-    public void handle(Response result) {
-        String path = request.pathInfo();
+    public void handle(ExecutionContext result) {
+        String path = result.request().pathInfo();
         if (path.length() == 0 || path.charAt(path.length() - 1) != '/') {
             path += '/';
         }
@@ -50,8 +45,8 @@ public class PathMappingMetricsHandler implements Handler<Response> {
                 .filter(regexMappedPath -> regexMappedPath.getValue().matcher(finalPath).matches())
                 .map(Map.Entry::getKey)
                 .findFirst()
-                .ifPresent(resolvedMappedPath -> request.metrics().setMappedPath(resolvedMappedPath));
+                .ifPresent(resolvedMappedPath -> result.request().metrics().setMappedPath(resolvedMappedPath));
 
-        next.handle(result);
+        next.handle(null);
     }
 }

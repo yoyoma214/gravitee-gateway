@@ -13,47 +13,45 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.reactor.handler.transaction;
+package io.gravitee.gateway.reactor.processor.transaction;
 
+import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
-import io.gravitee.gateway.api.handler.Handler;
+import io.gravitee.gateway.api.context.MutableExecutionContext;
+import io.gravitee.gateway.core.processor.AbstractProcessor;
 
 /**
- * A {@link Request} handler used to set the transaction ID of the request.
+ * A {@link Request} processor used to set the transaction ID of the request.
  *
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class TransactionHandler implements Handler<Request> {
+public class TransactionProcessor extends AbstractProcessor<ExecutionContext> {
 
     final static String DEFAULT_TRANSACTIONAL_ID_HEADER = "X-Gravitee-Transaction-Id";
 
-    private final Handler<Request> next;
-    private final Response response;
-
     private String transactionHeader = DEFAULT_TRANSACTIONAL_ID_HEADER;
 
-    TransactionHandler(final Handler<Request> next, final Response response) {
-        this.next = next;
-        this.response = response;
+    TransactionProcessor() {
     }
 
-    TransactionHandler(String transactionHeader, final Handler<Request> next, final Response response) {
-        this(next,response);
+    TransactionProcessor(String transactionHeader) {
         this.transactionHeader = transactionHeader;
     }
 
     @Override
-    public void handle(Request request) {
-        String transactionId = request.headers().getFirst(transactionHeader);
+    public void handle(ExecutionContext context) {
+        String transactionId = context.request().headers().getFirst(transactionHeader);
         if (transactionId == null) {
-            transactionId = request.id();
-            request.headers().set(transactionHeader, transactionId);
+            transactionId = context.request().id();
+            context.request().headers().set(transactionHeader, transactionId);
         }
-        response.headers().set(transactionHeader,transactionId);
+        context.response().headers().set(transactionHeader,transactionId);
 
-        request.metrics().setTransactionId(transactionId);
-        next.handle(new TransactionRequest(transactionId, request));
+        context.request().metrics().setTransactionId(transactionId);
+
+        ((MutableExecutionContext)context).request(new TransactionRequest(transactionId, context.request()));
+
+        next.handle(context);
     }
 }

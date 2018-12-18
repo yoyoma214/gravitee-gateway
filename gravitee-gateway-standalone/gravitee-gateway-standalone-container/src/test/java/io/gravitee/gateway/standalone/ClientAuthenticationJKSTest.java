@@ -15,17 +15,15 @@
  */
 package io.gravitee.gateway.standalone;
 
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.gravitee.definition.model.Endpoint;
 import io.gravitee.definition.model.endpoint.HttpEndpoint;
 import io.gravitee.definition.model.ssl.jks.JKSKeyStore;
 import io.gravitee.definition.model.ssl.jks.JKSTrustStore;
 import io.gravitee.gateway.handlers.api.definition.Api;
-import io.gravitee.gateway.standalone.junit.annotation.ApiConfiguration;
 import io.gravitee.gateway.standalone.junit.annotation.ApiDescriptor;
 import io.gravitee.gateway.standalone.junit.rules.ApiDeployer;
-import io.gravitee.gateway.standalone.junit.rules.ApiPublisher;
-import io.gravitee.gateway.standalone.servlet.TeamServlet;
 import io.gravitee.gateway.standalone.wiremock.ResourceUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
@@ -47,10 +45,6 @@ import static org.junit.Assert.assertEquals;
  * @author GraviteeSource Team
  */
 @ApiDescriptor("/io/gravitee/gateway/standalone/client-authentication-jks-support.json")
-@ApiConfiguration(
-        servlet = TeamServlet.class,
-        contextPath = "/team"
-)
 public class ClientAuthenticationJKSTest extends AbstractGatewayTest {
 
     // JKS has been generated with the following commands:
@@ -64,7 +58,7 @@ public class ClientAuthenticationJKSTest extends AbstractGatewayTest {
     // Generate the client truststore
     // keytool -import -noprompt -trustcacerts -alias selfsigned -file  keystore01.cert -keystore truststore01.jks -keypass password -storepass password
     private WireMockRule wireMockRule = new WireMockRule(wireMockConfig()
-            .dynamicPort()
+            .notifier(new Slf4jNotifier(true))
             .dynamicHttpsPort()
             .needClientAuth(true)
             .trustStorePath(ResourceUtils.toPath("io/gravitee/gateway/standalone/truststore01.jks"))
@@ -74,7 +68,6 @@ public class ClientAuthenticationJKSTest extends AbstractGatewayTest {
 
     @Rule
     public final TestRule chain = RuleChain
-            .outerRule(new ApiPublisher())
             .outerRule(wireMockRule)
             .around(new ApiDeployer(this));
 

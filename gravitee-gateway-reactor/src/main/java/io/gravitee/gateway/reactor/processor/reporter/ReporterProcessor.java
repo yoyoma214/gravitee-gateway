@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.reactor.handler.reporter;
+package io.gravitee.gateway.reactor.processor.reporter;
 
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
-import io.gravitee.gateway.api.handler.Handler;
+import io.gravitee.gateway.api.ExecutionContext;
+import io.gravitee.gateway.core.processor.AbstractProcessor;
 import io.gravitee.gateway.report.ReporterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,37 +25,31 @@ import org.slf4j.LoggerFactory;
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class ReporterHandler implements Handler<Response> {
+public class ReporterProcessor extends AbstractProcessor<ExecutionContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ReporterHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReporterProcessor.class);
 
-    private final Handler<Response> next;
-    private final Request serverRequest;
     private final ReporterService reporterService;
 
-    public ReporterHandler(final ReporterService reporterService, final Request serverRequest,
-                           final Handler<Response> next) {
+    public ReporterProcessor(final ReporterService reporterService) {
         this.reporterService = reporterService;
-        this.serverRequest = serverRequest;
-        this.next = next;
     }
 
     @Override
-    public void handle(Response result) {
-        // Push result to the next handler
-        next.handle(result);
-
+    public void handle(ExecutionContext context) {
         try {
-            reporterService.report(serverRequest.metrics());
+            reporterService.report(context.request().metrics());
 
-            if (serverRequest.metrics().getLog() != null) {
-                reporterService.report(serverRequest.metrics().getLog());
+            if (context.request().metrics().getLog() != null) {
+                reporterService.report(context.request().metrics().getLog());
 
                 // Dispose the log reference since it must not be used anymore
-                serverRequest.metrics().setLog(null);
+                context.request().metrics().setLog(null);
             }
         } catch (Exception ex) {
             LOGGER.error("An error occurs while reporting metrics", ex);
         }
+
+        next.handle(context);
     }
 }

@@ -18,42 +18,87 @@ package io.gravitee.gateway.reactor.handler.context;
 import io.gravitee.gateway.api.ExecutionContext;
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.Response;
+import io.gravitee.gateway.api.context.MutableExecutionContext;
 import io.gravitee.gateway.api.expression.TemplateContext;
 import io.gravitee.gateway.api.expression.TemplateEngine;
 import io.gravitee.gateway.api.expression.TemplateVariableProvider;
 import io.gravitee.gateway.el.SpelTemplateEngine;
 import org.springframework.context.ApplicationContext;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Enumeration;
+import java.util.Map;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class DefaultExecutionContext implements ExecutionContext {
+public class ReactableExecutionContext implements MutableExecutionContext {
 
     private final static String TEMPLATE_ATTRIBUTE_REQUEST = "request";
     private final static String TEMPLATE_ATTRIBUTE_RESPONSE = "response";
     private final static String TEMPLATE_ATTRIBUTE_CONTEXT = "context";
 
-    private final Map<String, Object> attributes = new AttributeMap();
-
-    private final Request request;
-
-    private final Response response;
-
     private final ApplicationContext applicationContext;
 
     private Collection<TemplateVariableProvider> providers;
 
+    private final MutableExecutionContext context;
+
     private SpelTemplateEngine spelTemplateEngine;
 
-    DefaultExecutionContext(final Request request, final Response response, ApplicationContext applicationContext) {
-        this.request = request;
-        this.response = response;
+    ReactableExecutionContext(final MutableExecutionContext context, ApplicationContext applicationContext) {
+        this.context = context;
         this.applicationContext = applicationContext;
 
-        setAttribute(ExecutionContext.ATTR_CONTEXT_PATH, request.contextPath());
+        setAttribute(ExecutionContext.ATTR_CONTEXT_PATH, context.request().contextPath());
+    }
+
+    @Override
+    public ReactableExecutionContext request(Request request) {
+        context.request(request);
+        return this;
+    }
+
+    @Override
+    public ReactableExecutionContext response(Response response) {
+        context.response(response);
+        return this;
+    }
+
+    @Override
+    public Request request() {
+        return context.request();
+    }
+
+    @Override
+    public Response response() {
+        return context.response();
+    }
+
+    @Override
+    public void setAttribute(String name, Object value) {
+        context.setAttribute(name, value);
+    }
+
+    @Override
+    public void removeAttribute(String name) {
+        context.removeAttribute(name);
+    }
+
+    @Override
+    public Object getAttribute(String name) {
+        return context.getAttribute(name);
+    }
+
+    @Override
+    public Enumeration<String> getAttributeNames() {
+        return context.getAttributeNames();
+    }
+
+    @Override
+    public Map<String, Object> getAttributes() {
+        return context.getAttributes();
     }
 
     @Override
@@ -62,33 +107,13 @@ public class DefaultExecutionContext implements ExecutionContext {
     }
 
     @Override
-    public void setAttribute(String name, Object value) {
-        attributes.put(name, value);
-    }
-
-    @Override
-    public void removeAttribute(String name) {
-        attributes.remove(name);
-    }
-
-    @Override
-    public Object getAttribute(String name) {
-        return attributes.get(name);
-    }
-
-    @Override
-    public Enumeration<String> getAttributeNames() {
-        return Collections.enumeration(attributes.keySet());
-    }
-
-    @Override
     public TemplateEngine getTemplateEngine() {
         if (spelTemplateEngine == null) {
             spelTemplateEngine = new SpelTemplateEngine();
 
             TemplateContext templateContext = spelTemplateEngine.getTemplateContext();
-            templateContext.setVariable(TEMPLATE_ATTRIBUTE_REQUEST, new EvaluableRequest(request));
-            templateContext.setVariable(TEMPLATE_ATTRIBUTE_RESPONSE, new EvaluableResponse(response));
+            templateContext.setVariable(TEMPLATE_ATTRIBUTE_REQUEST, new EvaluableRequest(request()));
+            templateContext.setVariable(TEMPLATE_ATTRIBUTE_RESPONSE, new EvaluableResponse(response()));
             templateContext.setVariable(TEMPLATE_ATTRIBUTE_CONTEXT, new EvaluableExecutionContext(this));
 
             if (providers != null) {
@@ -99,28 +124,7 @@ public class DefaultExecutionContext implements ExecutionContext {
         return spelTemplateEngine;
     }
 
-    public Map<String, Object> getAttributes() {
-        return this.attributes;
-    }
-
     void setProviders(Collection<TemplateVariableProvider> providers) {
         this.providers = providers;
-    }
-
-    private class AttributeMap extends HashMap<String, Object> {
-
-        /**
-         * In the most general case, the context will not store more than 10 elements in the Map.
-         * Then, the initial capacity must be set to limit size in memory.
-         */
-        AttributeMap() {
-            super(12, 1.0f);
-        }
-
-        @Override
-        public Object get(Object key) {
-            Object value = super.get(key);
-            return (value != null) ? value : super.get(ExecutionContext.ATTR_PREFIX + key);
-        }
     }
 }

@@ -13,28 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.core.processor;
+package io.gravitee.gateway.reactor.processor.responsetime;
 
 import io.gravitee.gateway.api.ExecutionContext;
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
-
-import java.util.function.Function;
+import io.gravitee.gateway.core.processor.AbstractProcessor;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class InstanceCreatorAwareProcessorProvider implements ProcessorProvider {
-
-    private final Function<Void, Processor> function;
-
-    public InstanceCreatorAwareProcessorProvider(Function<Void, Processor> function) {
-        this.function = function;
-    }
+public class ResponseTimeProcessor extends AbstractProcessor<ExecutionContext> {
 
     @Override
-    public Processor provide(Request request, Response response, ExecutionContext executionContext) {
-        return function.apply(null);
+    public void handle(ExecutionContext context) {
+        // Compute response-time and add it to the metrics
+        long proxyResponseTimeInMs = System.currentTimeMillis() - context.request().metrics().timestamp().toEpochMilli();
+        context.request().metrics().setStatus(context.response().status());
+        context.request().metrics().setProxyResponseTimeMs(proxyResponseTimeInMs);
+        context.request().metrics().setProxyLatencyMs(proxyResponseTimeInMs - context.request().metrics().getApiResponseTimeMs());
+
+        // Push response to the next handler
+        next.handle(context);
     }
 }

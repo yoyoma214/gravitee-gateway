@@ -13,25 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.reactor.handler.alert;
+package io.gravitee.gateway.handlers.api.processor.alert;
 
 import io.gravitee.alert.api.event.Event;
 import io.gravitee.gateway.api.ExecutionContext;
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
-import io.gravitee.gateway.api.handler.Handler;
+import io.gravitee.gateway.core.processor.AbstractProcessor;
 import io.gravitee.node.api.Node;
 import io.gravitee.plugin.alert.AlertEngineService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
- * @author Azize ELAMRANI (azize.elamrani at graviteesource.com)
+ * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class AlertHandler implements Handler<Response> {
+public class AlertProcessor extends AbstractProcessor<ExecutionContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AlertHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlertProcessor.class);
 
     private static final String REQUEST_TYPE = "REQUEST";
     private static final String CONTEXT_GATEWAY = "Gateway";
@@ -49,53 +49,41 @@ public class AlertHandler implements Handler<Response> {
     private static final String PROP_QUOTA_LIMIT = "Quota limit";
     private static final String PROP_QUOTA_PERCENT = "Quota percent";
 
-    private final AlertEngineService alertEngineService;
-    private final Request serverRequest;
-    private final ExecutionContext executionContext;
-    private final Node node;
-    private final String port;
-    private final Handler<Response> next;
+    @Autowired
+    private AlertEngineService alertEngineService;
 
-    public AlertHandler(final AlertEngineService alertEngineService, final Request serverRequest,
-                        final ExecutionContext executionContext, final Node node, final String port,
-                        final Handler<Response> next) {
-        this.alertEngineService = alertEngineService;
-        this.serverRequest = serverRequest;
-        this.executionContext = executionContext;
-        this.node = node;
-        this.port = port;
-        this.next = next;
-    }
+    @Autowired
+    private Node node;
+
+    @Value("${http.port:8082}")
+    private String port;
 
     @Override
-    public void handle(Response result) {
-        // Push result to the next handler
-        next.handle(result);
-
+    public void handle(ExecutionContext context) {
         try {
             if (alertEngineService != null) {
                 final Event.Builder event = new Event.Builder()
-                        .timestamp(serverRequest.timestamp())
+                        .timestamp(context.request().timestamp())
                         .context(CONTEXT_GATEWAY, node.id())
                         .context(CONTEXT_HOSTNAME, node.hostname())
                         .context(CONTEXT_PORT, port)
                         .type(REQUEST_TYPE)
-                        .prop(PROP_REQUEST_ID, serverRequest.id())
-                        .prop(PROP_CONTEXT_PATH, executionContext.getAttribute(ExecutionContext.ATTR_CONTEXT_PATH))
-                        .prop(PROP_API, executionContext.getAttribute(ExecutionContext.ATTR_API))
-                        .prop(PROP_APPLICATION, executionContext.getAttribute(ExecutionContext.ATTR_APPLICATION))
-                        .prop(PROP_PLAN, executionContext.getAttribute(ExecutionContext.ATTR_PLAN))
-                        .prop(PROP_RESPONSE_STATUS, result.status())
-                        .prop(PROP_LATENCY, serverRequest.metrics().getProxyLatencyMs());
+                        .prop(PROP_REQUEST_ID, context.request().id())
+                        .prop(PROP_CONTEXT_PATH, context.getAttribute(ExecutionContext.ATTR_CONTEXT_PATH))
+                        .prop(PROP_API, context.getAttribute(ExecutionContext.ATTR_API))
+                        .prop(PROP_APPLICATION, context.getAttribute(ExecutionContext.ATTR_APPLICATION))
+                        .prop(PROP_PLAN, context.getAttribute(ExecutionContext.ATTR_PLAN))
+                        .prop(PROP_RESPONSE_STATUS, context.response().status())
+                        .prop(PROP_LATENCY, context.request().metrics().getProxyLatencyMs());
 
                 final Object tenant = node.metadata().get("tenant");
                 if (tenant != null) {
                     event.context(CONTEXT_TENANT, (String) tenant);
                 }
 
-                final Long quotaCount = (Long) executionContext.getAttribute(ExecutionContext.ATTR_QUOTA_COUNT);
+                final Long quotaCount = (Long) context.getAttribute(ExecutionContext.ATTR_QUOTA_COUNT);
                 if (quotaCount != null) {
-                    final Long quotaLimit = (Long) executionContext.getAttribute(ExecutionContext.ATTR_QUOTA_LIMIT);
+                    final Long quotaLimit = (Long) context.getAttribute(ExecutionContext.ATTR_QUOTA_LIMIT);
                     if (quotaLimit != null) {
                         event
                                 .prop(PROP_QUOTA_COUNT, quotaCount)
@@ -107,6 +95,9 @@ public class AlertHandler implements Handler<Response> {
             }
         } catch (Exception ex) {
             LOGGER.error("An error occurs while sending alert", ex);
+        }
+         finally {
+            next.handle(null);
         }
     }
 }

@@ -38,9 +38,7 @@ import static org.junit.Assert.assertEquals;
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-@ApiDescriptor(
-        value = "/io/gravitee/gateway/standalone/dynamic-routing.json",
-        enhanceHttpPort = true)
+@ApiDescriptor(value = "/io/gravitee/gateway/standalone/dynamic-routing.json")
 @ApiConfiguration(
         servlet = TeamServlet.class,
         contextPath = "/team")

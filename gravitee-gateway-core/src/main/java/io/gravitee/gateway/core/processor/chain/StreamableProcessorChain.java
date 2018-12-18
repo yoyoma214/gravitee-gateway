@@ -13,23 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.reactor.handler.transaction;
+package io.gravitee.gateway.core.processor.chain;
 
-import io.gravitee.gateway.api.Request;
-import io.gravitee.gateway.api.Response;
 import io.gravitee.gateway.api.handler.Handler;
-import org.springframework.beans.factory.annotation.Value;
+import io.gravitee.gateway.api.stream.ReadWriteStream;
+import io.gravitee.gateway.core.processor.ProcessorFailure;
+import io.gravitee.gateway.core.processor.StreamableProcessor;
 
 /**
  * @author David BRASSELY (david.brassely at graviteesource.com)
  * @author GraviteeSource Team
  */
-public class TransactionHandlerFactory {
+public interface StreamableProcessorChain<T, S, H extends StreamableProcessor<T, S>>
+        extends ProcessorChain<T, H, H>, ReadWriteStream<S> {
 
-    @Value("${handlers.request.transaction.header:" + TransactionHandler.DEFAULT_TRANSACTIONAL_ID_HEADER + "}")
-    private String transactionHeader = TransactionHandler.DEFAULT_TRANSACTIONAL_ID_HEADER;
+    @Override
+    StreamableProcessorChain<T, S, H> handler(Handler<H> handler);
 
-    public Handler<Request> create(Handler<Request> next, Response response) {
-        return new TransactionHandler(transactionHeader, next, response);
-    }
+    @Override
+    StreamableProcessorChain<T, S, H> errorHandler(Handler<ProcessorFailure> handler);
+
+    StreamableProcessorChain<T, S, H> streamErrorHandler(Handler<ProcessorFailure> handler);
+
+    @Override
+    StreamableProcessorChain<T, S, H> exitHandler(Handler<Void> handler);
 }

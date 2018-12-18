@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.gravitee.gateway.reactor.handler.transaction;
+package io.gravitee.gateway.reactor.processor.transaction;
 
 import io.gravitee.gateway.api.Request;
 import io.gravitee.gateway.api.RequestWrapper;
